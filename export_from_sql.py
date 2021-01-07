@@ -14,11 +14,9 @@ params = "Driver={SQL Server Native Client 11.0};" \
 ## VERITABANI ISMI GIRILECEK YER
 ##SQL EXPRESS VE VERITABANI DEGISTIRELECEK YERLER
 
-params = urllib.parse.quote_plus(params)
 
-_engine = sa.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params, fast_executemany=True)
 
-sqlexport = SqlTransfer.SqlExport(_engine)
+sqlexport = SqlTransfer.SqlExport(params)
 
 if __name__ == '__main__':
     sqlexport.transfer(veritabani)

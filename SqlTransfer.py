@@ -1,13 +1,22 @@
+import math
+
 import pandas as pd
 import os
 import sqlalchemy as sa
 import pyodbc
 import time
+import urllib
 
 
 class SqlImport:
-    def __init__(self, engine):
-        self.engine = engine
+    def __init__(self, _params):
+        self.params = urllib.parse.quote_plus(_params)
+
+        _engine = sa.create_engine('mssql+pyodbc:///?odbc_connect=%s' % self.params, fast_executemany=True)
+        self.engineFast = _engine
+
+        _engine = sa.create_engine('mssql+pyodbc:///?odbc_connect=%s' % self.params, )
+        self.engineSlow = _engine
 
     def __sqlcol(self, data):
         dtypedict = {}
@@ -24,8 +33,13 @@ class SqlImport:
                 dtypedict.update({i: sa.types.Float})
         return dtypedict
 
+    def __chunker(self, seq, size):
+        return (seq[pos: pos + size] for pos in range(0, len(seq), size))
+
     def transfer(self, dosya_list):
         for dosya in dosya_list:
+            dosya_boyut = os.path.getsize(dosya)
+            print(f'Dosya boyutu : {dosya_boyut}')
             if dosya.endswith('.xlsx'):
                 basla1 = time.time()
 
@@ -34,9 +48,8 @@ class SqlImport:
                 dosya = dosya.replace(' ', '')
                 dtypes_dict = self.__sqlcol(data)
                 try:
-                    data.to_sql(dosya, con=self.engine, if_exists='replace', index=False, dtype=dtypes_dict)
+                    data.to_sql(dosya, con=self.engineFast, if_exists='replace', index=False, dtype=dtypes_dict)
                     print(f'Excel  aktarıldı : {dosya}')
-
                 except:
                     print(f'Dosya aktarılamadı : {dosya}')
                 bit1 = time.time()
@@ -63,9 +76,23 @@ class SqlImport:
                         dosya = dosya.replace(' ', '')
 
                     try:
-                        data.to_sql(name=dosya + '_' + table_name, con=self.engine, if_exists='replace', index=False,
-                                    dtype=dtypes_dict)
-                        print(f'Access aktarıldı : {dosya}_{table_name}')
+                        if dosya_boyut < 512000000:
+                            data.to_sql(name=dosya + '_' + table_name, con=self.engineFast, if_exists='replace',
+                                        index=False,
+                                        dtype=dtypes_dict)
+                            print(f'Access hızlı aktarıldı : {dosya}_{table_name}')
+
+                        else:
+                            SQL_SERVER_CHUNK_LIMIT = 2099
+                            chunksize = math.floor(SQL_SERVER_CHUNK_LIMIT / len(data.columns))
+
+                            for chunk in self.__chunker(data, chunksize):
+                                chunk.to_sql(
+                                    name=dosya + '_' + table_name, con=self.engineSlow, if_exists='append',
+                                    index=False,
+                                    dtype=dtypes_dict
+                                )
+                            print(f'Access yavas aktarıldı : {dosya}_{table_name}')
 
                     except:
                         print(f'Dosya aktarılamadı : {dosya}_{table_name}')
@@ -73,11 +100,23 @@ class SqlImport:
                     print(f'süre: %s , {dosya}' % (bit1 - basla1))
 
         pass
+    def read_dir(self, _dir):
+        os.chdir(_dir)
+        dosya_list = os.listdir()
+        excel_access_list = []
+        for i in dosya_list:
+            if i.endswith('.xlsx') or i.endswith('.accdb') or i.endswith('.mdb'):
+                excel_access_list.append(i)
+
+        return excel_access_list
+        pass
 
 
 class SqlExport:
-    def __init__(self, engine):
-        self.engine = engine
+    def __init__(self, _params):
+        params = urllib.parse.quote_plus(_params)
+
+        _engine = sa.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params, fast_executemany=True)
         pass
 
     def transfer(self, _veritabani):
