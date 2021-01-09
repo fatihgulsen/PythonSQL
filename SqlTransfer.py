@@ -1,8 +1,8 @@
 import math
-
 import pandas as pd
 import os
 import sqlalchemy as sa
+import numpy as np
 import pyodbc
 import time
 import urllib
@@ -18,11 +18,16 @@ class SqlImport:
         _engine = sa.create_engine('mssql+pyodbc:///?odbc_connect=%s' % self.params, )
         self.engineSlow = _engine
 
-    def __sqlcol(self, data):
+    @staticmethod
+    def __sqlcol(data):
+        measurer = np.vectorize(len)
         dtypedict = {}
         for i, j in zip(data.columns, data.dtypes):
             if "object" in str(j):
-                dtypedict.update({i: sa.types.NVARCHAR(length=255)})
+                if measurer(data[i].values.astype(str)).max(axis=0) < 255:
+                    dtypedict.update({i: sa.types.NVARCHAR(length=255)})
+                else:
+                    dtypedict.update({i: sa.types.NVARCHAR})
             elif "datetime" in str(j):
                 dtypedict.update({i: sa.types.DateTime()})
 
@@ -33,10 +38,12 @@ class SqlImport:
                 dtypedict.update({i: sa.types.Float})
         return dtypedict
 
-    def __chunker(self, seq, size):
+    @staticmethod
+    def __chunker(seq, size):
         return (seq[pos: pos + size] for pos in range(0, len(seq), size))
 
-    def transfer(self, dosya_list):
+    def transfer(self, _dir):
+        dosya_list = self.__read_dir(_dir)
         for dosya in dosya_list:
             dosya_boyut = os.path.getsize(dosya)
             print(f'Dosya boyutu : {dosya_boyut}')
@@ -98,16 +105,13 @@ class SqlImport:
                         print(f'Dosya aktarılamadı : {dosya}_{table_name}')
                     bit1 = time.time()
                     print(f'süre: %s , {dosya}' % (bit1 - basla1))
-
         pass
-    def read_dir(self, _dir):
+
+    @staticmethod
+    def __read_dir(_dir):
         os.chdir(_dir)
         dosya_list = os.listdir()
-        excel_access_list = []
-        for i in dosya_list:
-            if i.endswith('.xlsx') or i.endswith('.accdb') or i.endswith('.mdb'):
-                excel_access_list.append(i)
-
+        excel_access_list = [i for i in dosya_list if i.endswith('.xlsx') or i.endswith('.accdb') or i.endswith('.mdb')]
         return excel_access_list
         pass
 
@@ -117,6 +121,7 @@ class SqlExport:
         params = urllib.parse.quote_plus(_params)
 
         _engine = sa.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params, fast_executemany=True)
+        self.engine = _engine
         pass
 
     def transfer(self, _veritabani):

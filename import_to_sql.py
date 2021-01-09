@@ -16,9 +16,7 @@ dosya_dir = r'C:\Users\fatih\Desktop\PythonSQL'  # DOSYA KAYNAGI
 
 sqlimport = SqlTransfer.SqlImport(params)
 
-excel_access_list = sqlimport.read_dir(dosya_dir)
-
 if __name__ == '__main__':
-    sqlimport.transfer(excel_access_list)
+    sqlimport.transfer(dosya_dir)
     bit1 = time.time()
     print('süre: %s , genel' % (bit1 - basla1))
