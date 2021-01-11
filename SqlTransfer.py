@@ -2,7 +2,6 @@ import math
 import pandas as pd
 import os
 import sqlalchemy as sa
-import numpy as np
 import pyodbc
 import time
 import urllib
@@ -20,13 +19,14 @@ class SqlImport:
 
     @staticmethod
     def __sqlcol(data):
-        measurer = np.vectorize(len)
         dtypedict = {}
         for i, j in zip(data.columns, data.dtypes):
             if "object" in str(j):
-                if measurer(data[i].values.astype(str)).max(axis=0) < 255:
+                if data[i].str.len().max() < 255:
+                    # print(data[i].name, data[i].str.len().max())
                     dtypedict.update({i: sa.types.NVARCHAR(length=255)})
                 else:
+                    # print(data[i].name, data[i].str.len().max())
                     dtypedict.update({i: sa.types.NVARCHAR})
             elif "datetime" in str(j):
                 dtypedict.update({i: sa.types.DateTime()})
@@ -85,8 +85,8 @@ class SqlImport:
                     try:
                         if dosya_boyut < 512000000:
                             data.to_sql(name=dosya + '_' + table_name, con=self.engineFast, if_exists='replace',
-                                        index=False,
-                                        dtype=dtypes_dict)
+                                             index=False,
+                                             dtype=dtypes_dict)
                             print(f'Access hızlı aktarıldı : {dosya}_{table_name}')
 
                         else:

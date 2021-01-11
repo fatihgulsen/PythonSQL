@@ -1,5 +1,3 @@
-import urllib
-import sqlalchemy as sa
 import SqlTransfer
 import time
 
@@ -11,6 +9,7 @@ params = "Driver={SQL Server Native Client 11.0};" \
          "Server=localhost\SQLEXPRESS;" \
          f"Database={veritabani};" \
          "Trusted_Connection=yes;"
+
 ## VERITABANI ISMI GIRILECEK YER
 ##SQL EXPRESS VE VERITABANI DEGISTIRELECEK YERLER
 

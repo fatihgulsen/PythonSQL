@@ -1,11 +1,13 @@
-import time
 import SqlTransfer
+import time
 
 basla1 = time.time()
 
+veritabani = 'SQL_IMPORT'  ## DATABASE NAME
+
 params = "Driver={SQL Server Native Client 11.0};" \
          "Server=localhost\SQLEXPRESS;" \
-         "Database=SQL_IMPORT;" \
+         f"Database={veritabani};" \
          "Trusted_Connection=yes;"
 
 ## VERITABANI ISMI GIRILECEK YER
