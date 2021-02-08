@@ -144,6 +144,7 @@ class SqlExport:
                             try:
                                 data[col] = data[col].str.replace(';', ',')
                                 data[col] = data[col].str.replace(r'^=+', ' ')
+                                data[col] = data[col].str.replace(r'[\n\r\t]', ' ')
                                 data[col] = data[col].str.strip()
                             except:
                                 pass
