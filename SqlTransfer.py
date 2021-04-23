@@ -22,7 +22,7 @@ class SqlImport:
         dtypedict = {}
         for i, j in zip(data.columns, data.dtypes):
             if "object" in str(j):
-                if data[i].str.len().max() < 255:
+                if data[i].str.len().max() <= 255:
                     # print(data[i].name, data[i].str.len().max())
                     dtypedict.update({i: sa.types.NVARCHAR(length=255)})
                 else:
@@ -85,8 +85,8 @@ class SqlImport:
                     try:
                         if dosya_boyut < 512000000:
                             data.to_sql(name=dosya + '_' + table_name, con=self.engineFast, if_exists='replace',
-                                             index=False,
-                                             dtype=dtypes_dict)
+                                        index=False,
+                                        dtype=dtypes_dict)
                             print(f'Access hızlı aktarıldı : {dosya}_{table_name}')
 
                         else:
@@ -124,7 +124,7 @@ class SqlExport:
         self.engine = _engine
         pass
 
-    def transfer(self, _veritabani):
+    def transfer(self, _veritabani, col_len=25):
         sql_table = pd.read_sql_query('SELECT * FROM ' + _veritabani + '.sys.tables', self.engine)
         sql_table = sql_table['name']
 
@@ -138,6 +138,13 @@ class SqlExport:
                     query = f'SELECT DISTINCT * FROM [{table}]'
                     try:
                         data = pd.read_sql_query(query, self.engine)
+                        try:
+                            for _col in data.columns:
+                                if _col == 'IMPORTER_COUNTRY' or _col == 'N_IMPORTER_NAME':
+                                    data.drop(columns=_col, axis=1, inplace=True)
+                        except:
+                            pass
+
                         column = data.columns
 
                         for col in column:
@@ -149,13 +156,21 @@ class SqlExport:
                             except:
                                 pass
 
-                        with pd.ExcelWriter("%s.xlsx" % table, datetime_format='dd.mm.yyyy hh:mm:ss',
-                                            date_format='dd.mm.yyyy') as writer:
-                            try:
-                                data.to_excel(writer, index=False)
+                        try:
+                            with pd.ExcelWriter("%s.xlsx" % table, datetime_format='dd.mm.yyyy hh:mm:ss',
+                                                date_format='dd.mm.yyyy', engine='xlsxwriter') as writer:
+
+                                data.to_excel(writer, sheet_name='Sheet1', startrow=1, header=False, index=False)
+                                workbook = writer.book
+                                worksheet = writer.sheets['Sheet1']
+                                (max_row, max_col) = data.shape
+                                column_settings = [{'header': column} for column in data.columns]
+                                worksheet.add_table(0, 0, max_row, max_col - 1, {'columns': column_settings})
+                                worksheet.set_column(0, max_col - 1, col_len)
+                                writer.save()
                                 print('%s ciktisi Alindi' % table)
-                            except:
-                                print('Excel Cikti Hatasi')
+                        except:
+                            print('Excel Cikti Hatasi')
 
                         bit1 = time.time()
                         print(f'süre: %s , {table}' % (bit1 - basla1))
